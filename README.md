@@ -1,63 +1,101 @@
-# Шаблон репозитория, для успешной сдачи лабораторных работ.
+# Интернет магазин (1 спринт)
 
-## Введение
-Данный шаблон является примером оформления кода для сдачи лабораторных работ.
-Рекомендуется  строго его придерживаться во избежания проблем при сдаче и понижения баллов
+Backend-приложение для интернет-магазина на Django
 
+## Сущности
 
-## Структура проекта
+- **Product** — товар
+- **Category** — категория товара
+- **Cart** — корзина
+- **Order** — заказ
+- **OrderItem** — позиции заказа
 
- <pre>
-    .
-    ├── lab<# лабораторной работы>             # Кодовая база вашей лабораторной работы
-    │   ├── src/                               # Исходный код
-    │   ├── tests/                             # Unit тесты
-    │   ├── uv.lock                            # зависимости вашего проекта
-    │   ├── report.pdf                         # Отчет
-    │   ├── .gitignore                         # git ignore файл
-    │   ├──.pre-commit-config.yaml             # Средства автоматизации проверки кодстайла
-    │   ├── README.md                          # Описание вашего проекта, с описанием файлов и с титульником о том,
-                                               # что и какая задача
-</pre>
+## Установка и запуск
 
-В папке [src](./src) лежат файлы с реализацией задачи заданной в лабораторной работе. Обязательным файлом является файл
-[main.py](./src/main.py) в котором описана точка входа в приложение - функция **main**. Требования к коду:
-- Переменные, функции и модули именуются по [**snake_case**](https://realpython.com/ref/glossary/snake-case/)
-- Константы должны быть вынесены в файл **constants.py** и именовановаться с помощию символов в верхнем регистре
-- Классы должны именоваться в [**PascalCase**](https://habr.com/ru/articles/724556/)
-- Имена сущностей должны быть осмысленные и содержательные
-- Все отступы должны быть консистентны: 1 TAB = 4 spaces
-- Весь функционал должен быть описан в функциях и в классах. Не допускается писать весь в глобальном скоупе или в одной функции
-- К каждой функции должны быть описаны  [**docstring**](https://peps.python.org/pep-0257/) и аннотации к аргументам и выходным параметрам функций.
-
-В качестве референса проще cходу соблюдать [**PEP8**](https://peps.python.org/pep-0008/) и использовать IDE c готовой поддержкой:
-например PyCharm или VSCode c настроенными плагинами.
-В ходе попыток запушить код в репозиторий ваш код будет проходить проверку статическим анализатором [**mypy**](https://mypy-lang.org/)
-а также с встроенным в [**ruff**](https://astral.sh/ruff) на предмет нарушения код стайла. При работе с кодовой базой
-всю работу необходимо выполнять в [виртуальном окружении](https://docs.python.org/3/tutorial/venv.html)
-
-
-В папке [tests](./tests) лежат [unit тесты](https://tproger.ru/articles/testiruem-na-python-unittest-i-pytest-instrukcija-dlja-nachinajushhih) для проверки функциональности программы или ее частей.
-Рекомендуется использовать pytest. Также название тестов должно быть осмысленно и содержать определение проверямой части.
-Базовые соглашения pytest можно посмотреть [здесь](https://www.qabash.com/pytest-default-naming-conventions-guide/).
-Рекомендуется проверять не только успешные кейсы, но и краевые условия и кейсы в которых была допущена ошибка (неудачные кейсы).
-
-В качестве пакетного менджера в данном шаблоне/репозитории используется [uv](https://github.com/astral-sh/uv).
-Можно использовать и [стандартные виртальные окружения](https://docs.python.org/3/library/venv.html). В таком случае необходимо добавить в репозиторий `requirements.txt`.
-Это достигается командой
-```shell
-pip freeze > requirements.txt
+### 1. Клонировать репозиторий
+```bash
+git clone <url>
+cd sem2_python_web
 ```
-Также разрешается использовать [`poetry`](https://python-poetry.org/)
-## Как работать с репозиторием и шаблонами
-1. Необходимо создать репозиторий из этого шаблона. Посмотреть можно [здесь](https://docs.github.com/ru/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template)
-2. Склонировать или спуллить его к себе на машину командами `git pull` или `git clone`
-3. Создать виртуальное окружение:
 
-    a. Для uv прописать команду `uv venv`. Затем прописать `.venv/bin/activate` в терминале
+### 2. Создать виртуальное окружение
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Linux/Mac
+# .venv\Scripts\activate   # Windows
+```
 
-    b. Для обычного python `python -m venv <имя директории где будет храниться папка .venv>`. Затем прописать `.venv/bin/activate` в терминале
-4. Установить [`pre-commit`](https://pre-commit.com/). Для этого достаточно ввести команду `pip install pre-commit`
-5. Выполнить команду `pre-commit install`
-6. При запушивании в репозиторий необходимо правильно составлять сообщения коммита. Правила можно прочитать [здесь](https://github.com/RomuloOliveira/commit-messages-guide/blob/master/README_ru-RU.md)
-7. **Внимательно** читайте то, что пишется при попытке коммита, если исправили ошибки нужно заново добавить отредактированные файлы в гит и попробовать коммитнуть
+### 3. Установить зависимости
+```bash
+uv add django djangorestframework psycopg2-binary
+```
+
+### 4. Настроить PostgreSQL
+
+Создать базу данных:
+```sql
+CREATE DATABASE shop_db;
+CREATE USER shop_user WITH PASSWORD 'python';
+GRANT ALL PRIVILEGES ON DATABASE shop_db TO shop_user;
+ALTER SCHEMA public OWNER TO shop_user;
+```
+
+В `src/config/settings.py` проверить настройки БД:
+```python
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'shop_db',
+        'USER': 'shop_user',
+        'PASSWORD': 'python',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+```
+
+### 5. Применить миграции
+```bash
+cd src
+python manage.py migrate
+python manage.py createsuperuser
+```
+
+### 6. Запустить сервер
+```bash
+python manage.py runserver
+```
+
+## API Эндпоинты
+
+| Метод | Эндпоинт | Описание |
+|-------|----------|----------|
+| GET | `/api/products/` | Список товаров (пагинация) |
+| GET | `/api/products/?category=1` | Фильтр по категории |
+| GET | `/api/products/{id}/` | Детали товара |
+| GET | `/api/categories/` | Список категорий |
+| POST | `/api/cart/` | Добавить товар в корзину |
+| GET | `/api/cart/?session_key=xxx` | Просмотр корзины |
+| POST | `/api/orders/` | Оформить заказ |
+| GET | `/api/orders/?session_key=xxx` | История заказов |
+
+## Примеры запросов
+
+### Добавить товар в корзину
+```bash
+curl -X POST http://127.0.0.1:8000/api/cart/ \
+  -H "Content-Type: application/json" \
+  -d '{"session_key": "test123", "product": 1, "quantity": 2}'
+```
+
+### Оформить заказ
+```bash
+curl -X POST http://127.0.0.1:8000/api/orders/ \
+  -H "Content-Type: application/json" \
+  -d '{"session_key": "test123", "user_email": "test@example.com"}'
+```
+
+## Админка
+
+- URL: `http://127.0.0.1:8000/admin/`
+- Логин/пароль: создаются через `createsuperuser`
