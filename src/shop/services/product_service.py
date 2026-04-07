@@ -1,6 +1,7 @@
 """Сервис для работы с товарами"""
-from src.shop.domain.models import Product
-from src.shop.domain.exceptions import ProductNotFoundError
+
+from shop.domain.exceptions import ProductNotFoundError
+from shop.domain.models import Product
 
 
 def get_product(product_id: int) -> Product:

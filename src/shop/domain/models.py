@@ -1,4 +1,5 @@
 """Модели данных"""
-from src.shop.models import Category, Product, Cart, Order, OrderItem
 
-__all__ = ['Category', 'Product', 'Cart', 'Order', 'OrderItem']
+from shop.models import Cart, Category, Order, OrderItem, Product
+
+__all__ = ["Category", "Product", "Cart", "Order", "OrderItem"]

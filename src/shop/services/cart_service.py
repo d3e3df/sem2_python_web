@@ -1,6 +1,7 @@
 """Сервис для работы с корзиной"""
-from src.shop.domain.models import Cart, Product
-from src.shop.domain.exceptions import ProductNotFoundError, NotEnoughStockError
+
+from shop.domain.exceptions import NotEnoughStockError, ProductNotFoundError
+from shop.domain.models import Cart, Product
 
 
 def add_to_cart(session_key: str, product_id: int, quantity: int = 1) -> Cart:
@@ -14,21 +15,26 @@ def add_to_cart(session_key: str, product_id: int, quantity: int = 1) -> Cart:
     except Product.DoesNotExist:
         raise ProductNotFoundError(f"Товар с id={product_id} не найден")
 
-    # Проверяем наличие на складе
-    if product.stock < quantity:
-        raise NotEnoughStockError(
-            f"Недостаточно товара '{product.name}'. Доступно: {product.stock}"
-        )
-
-    # Добавляем или обновляем корзину
+    # Получаем текущее количество в корзине (если есть)
     cart_item, created = Cart.objects.get_or_create(
         session_key=session_key,
         product=product,
-        defaults={'quantity': quantity}
+        defaults={"quantity": 0},
     )
-    if not created:
-        cart_item.quantity += quantity
-        cart_item.save()
+
+    # Итоговое количество после добавления
+    total_quantity = cart_item.quantity + quantity
+
+    # Проверяем наличие на складе
+    if product.stock < total_quantity:
+        raise NotEnoughStockError(
+            f"Недостаточно товара '{product.name}'. В корзине уже {cart_item.quantity}, "
+            f"доступно: {product.stock}"
+        )
+
+    # Обновляем количество
+    cart_item.quantity = total_quantity
+    cart_item.save()
 
     return cart_item
 

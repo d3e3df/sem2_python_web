@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from .models import Cart, Category, Order, OrderItem, Product
+from shop.domain.models import Cart, Category, Order, OrderItem, Product
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -63,3 +63,9 @@ class OrderSerializer(serializers.ModelSerializer):
 class CreateOrderSerializer(serializers.Serializer):
     session_key = serializers.CharField(max_length=40)
     user_email = serializers.EmailField(required=False, allow_blank=True)
+
+
+class AddToCartSerializer(serializers.Serializer):
+    session_key = serializers.CharField(max_length=40)
+    product = serializers.IntegerField()
+    quantity = serializers.IntegerField(min_value=1, default=1)

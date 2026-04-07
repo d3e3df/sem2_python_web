@@ -1,8 +1,11 @@
 """Сервис для работы с заказами"""
+
 from django.db import transaction
-from src.shop.domain.models import Order, OrderItem
-from src.shop.domain.exceptions import CartEmptyError, NotEnoughStockError, OrderNotFoundError
-from src.shop.services.cart_service import get_cart, clear_cart
+
+from shop.domain.exceptions import (CartEmptyError, NotEnoughStockError,
+                                    OrderNotFoundError)
+from shop.domain.models import Order, OrderItem
+from shop.services.cart_service import clear_cart, get_cart
 
 
 def create_order(session_key: str, user_email: str = "") -> Order:
@@ -33,7 +36,7 @@ def create_order(session_key: str, user_email: str = "") -> Order:
             session_key=session_key,
             user_email=user_email,
             total_price=total_price,
-            status='pending'
+            status="pending",
         )
 
         # Создаём позиции заказа и уменьшаем stock
@@ -42,7 +45,7 @@ def create_order(session_key: str, user_email: str = "") -> Order:
                 order=order,
                 product=item.product,
                 quantity=item.quantity,
-                price_at_time=item.product.price
+                price_at_time=item.product.price,
             )
             item.product.stock -= item.quantity
             item.product.save()
@@ -55,7 +58,7 @@ def create_order(session_key: str, user_email: str = "") -> Order:
 
 def get_orders(session_key: str):
     """Получить все заказы пользователя"""
-    return Order.objects.filter(session_key=session_key).order_by('-created_at')
+    return Order.objects.filter(session_key=session_key).order_by("-created_at")
 
 
 def get_order_by_id(order_id: int, session_key: str = None) -> Order:
