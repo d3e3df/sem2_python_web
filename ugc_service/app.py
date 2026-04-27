@@ -50,16 +50,16 @@ def api_list_reviews():
     return jsonify([r.dict() for r in reviews]), 200
 
 
-@app.route('/ugc/reviews/<int:review_id>/status/', methods=['PATCH'])
+@app.route('/ugc/reviews/<int:review_id>/status', methods=['PATCH'])
 def api_update_review_status(review_id):
     """Обновить статус отзыва"""
     try:
-        data = ReviewUpdateStatus(**request.json)
-    except Exception as e:
-        return error_response(str(e), 'VALIDATION_ERROR', 400)
+        data = request.json
+        status = data.get('status')
+        if status not in ('active', 'hidden', 'pending'):
+            return error_response('status должен быть: active, hidden или pending', 'VALIDATION_ERROR', 400)
 
-    try:
-        review = update_review_status(review_id, data.status)
+        review = update_review_status(review_id, status)
         return jsonify(review.dict()), 200
     except ValueError as e:
         return error_response(str(e), 'REVIEW_NOT_FOUND', 404)
