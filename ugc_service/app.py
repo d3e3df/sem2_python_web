@@ -44,7 +44,7 @@ def api_create_review():
 def api_list_reviews():
     """Получить список отзывов"""
     product_id = request.args.get('product_id', type=int)
-    status = request.args.get('status', 'active')
+    status = request.args.get('status', type=str)
 
     reviews = get_reviews(product_id, status)
     return jsonify([r.dict() for r in reviews]), 200

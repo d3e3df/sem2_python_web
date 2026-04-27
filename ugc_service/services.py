@@ -58,14 +58,14 @@ def create_review(data: ReviewCreate) -> ReviewResponse:
     )
 
 
-def get_reviews(product_id: int = None, status: str = 'active') -> list:
+def get_reviews(product_id: int = None, status: str = None) -> list:
     """
     Получить список отзывов.
-    Если product_id указан — фильтровать по товару.
+    Если status не указан — возвращаем все отзывы.
     """
     with get_db() as conn:
         with conn.cursor() as cur:
-            if product_id:
+            if product_id and status:
                 cur.execute(
                     '''
                     SELECT * FROM reviews 
@@ -74,10 +74,23 @@ def get_reviews(product_id: int = None, status: str = 'active') -> list:
                     ''',
                     (product_id, status)
                 )
-            else:
+            elif product_id:
+                cur.execute(
+                    '''
+                    SELECT * FROM reviews 
+                    WHERE product_id = %s
+                    ORDER BY created_at DESC
+                    ''',
+                    (product_id,)
+                )
+            elif status:
                 cur.execute(
                     'SELECT * FROM reviews WHERE status = %s ORDER BY created_at DESC',
                     (status,)
+                )
+            else:
+                cur.execute(
+                    'SELECT * FROM reviews ORDER BY created_at DESC'
                 )
             rows = cur.fetchall()
 
