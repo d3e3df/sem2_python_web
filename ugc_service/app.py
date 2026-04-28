@@ -2,7 +2,7 @@
 from flask import Flask, request, jsonify
 from flask_pydantic_spec import FlaskPydanticSpec
 
-from .schemas import ReviewCreate, ReviewUpdateStatus
+from .schemas import ReviewCreate
 from .services import create_review, get_reviews, update_review_status
 
 app = Flask(__name__)
@@ -24,10 +24,8 @@ def error_response(message, code='ERROR', status=400):
     }), status
 
 
-
 @app.route('/ugc/reviews/', methods=['POST'])
 def api_create_review():
-    """Создать отзыв"""
     try:
         data = ReviewCreate(**request.json)
     except Exception as e:
@@ -35,24 +33,22 @@ def api_create_review():
 
     try:
         review = create_review(data)
-        return jsonify(review.dict()), 201
+        return jsonify(review.model_dump()), 201
     except ValueError as e:
         return error_response(str(e), 'PRODUCT_NOT_FOUND', 404)
 
 
 @app.route('/ugc/reviews/', methods=['GET'])
 def api_list_reviews():
-    """Получить список отзывов"""
     product_id = request.args.get('product_id', type=int)
     status = request.args.get('status', type=str)
 
     reviews = get_reviews(product_id, status)
-    return jsonify([r.dict() for r in reviews]), 200
+    return jsonify([r.model_dump() for r in reviews]), 200
 
 
 @app.route('/ugc/reviews/<int:review_id>/status', methods=['PATCH'])
 def api_update_review_status(review_id):
-    """Обновить статус отзыва"""
     try:
         data = request.json
         status = data.get('status')
@@ -60,7 +56,7 @@ def api_update_review_status(review_id):
             return error_response('status должен быть: active, hidden или pending', 'VALIDATION_ERROR', 400)
 
         review = update_review_status(review_id, status)
-        return jsonify(review.dict()), 200
+        return jsonify(review.model_dump()), 200
     except ValueError as e:
         return error_response(str(e), 'REVIEW_NOT_FOUND', 404)
 
