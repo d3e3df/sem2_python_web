@@ -2,17 +2,14 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 # Конфигурация JWT
-SECRET_KEY = "your-secret-key-change-in-production"  # В продакшене в .env
+SECRET_KEY = "your-secret-key-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
-
-# Хеширование паролей
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Схема безопасности
 security = HTTPBearer()
@@ -20,12 +17,16 @@ security = HTTPBearer()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Проверить пароль"""
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
 
 def get_password_hash(password: str) -> str:
     """Получить хеш пароля"""
-    return pwd_context.hash(password)
+    if len(password) > 72:
+        password = password[:72]
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed.decode('utf-8')
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -58,9 +59,10 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     token = credentials.credentials
     payload = decode_token(token)
     user_id = payload.get("sub")
+    username = payload.get("username")
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Неверный токен"
         )
-    return {"user_id": user_id}
+    return {"user_id": user_id, "username": username}
