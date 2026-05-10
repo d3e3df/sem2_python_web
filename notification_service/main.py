@@ -9,7 +9,7 @@ import asyncio
 
 from .auth import (
     create_access_token, get_password_hash, verify_password,
-    get_current_user, decode_token
+    get_current_user, decode_token, verify_service_token
 )
 
 from .schemas import (
@@ -191,12 +191,11 @@ async def send_notification_email(user_id: str, message: str):
 async def send_notification(
         request: NotificationRequest,
         background_tasks: BackgroundTasks,
-        current_user: dict = Depends(get_current_user)
+        _: dict = Depends(verify_service_token)  # ← изменил
 ):
     """
     Отправить уведомление пользователю.
-    Требует JWT токен.
-    Уведомление отправляется в фоне.
+    Доступно только для внутренних сервисов.
     """
     background_tasks.add_task(
         send_notification_email,
@@ -204,7 +203,7 @@ async def send_notification(
         request.message
     )
 
-    logger.info(f"Пользователь {current_user['username']} запросил уведомление для {request.user_id}")
+    logger.info(f"Запрос на уведомление для {request.user_id}")
 
     return NotificationResponse(
         task_id=f"notify_{request.user_id}_{datetime.now().timestamp()}",

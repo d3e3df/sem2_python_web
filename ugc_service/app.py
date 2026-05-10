@@ -8,6 +8,8 @@ from .services import create_review, get_reviews, update_review_status
 app = Flask(__name__)
 
 app.config['DJANGO_API_URL'] = 'http://localhost:8000'
+app.config['FASTAPI_URL'] = 'http://localhost:8001'
+app.config['FASTAPI_TOKEN'] = 'internal-service-token'
 
 spec = FlaskPydanticSpec('flask', title='UGC API')
 spec.register(app)

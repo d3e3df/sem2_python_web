@@ -20,6 +20,28 @@ def check_product_exists(product_id: int) -> bool:
         return False
 
 
+def send_notification_to_fastapi(user_id: str, message: str) -> bool:
+    """
+    Отправить уведомление через FastAPI сервис.
+    Возвращает True, если успешно.
+    """
+    try:
+        # Получаем токен из конфига (в реальности — из переменных окружения)
+        token = current_app.config.get('FASTAPI_TOKEN', '')
+        headers = {'Authorization': f'Bearer {token}'} if token else {}
+
+        response = requests.post(
+            f"{current_app.config['FASTAPI_URL']}/notify",
+            json={"user_id": user_id, "message": message},
+            headers=headers,
+            timeout=5
+        )
+        return response.status_code == 200
+    except requests.RequestException as e:
+        current_app.logger.error(f"Ошибка отправки уведомления: {e}")
+        return False
+
+
 def create_review(data: ReviewCreate) -> ReviewResponse:
     """
     Создать новый отзыв.
@@ -47,6 +69,9 @@ def create_review(data: ReviewCreate) -> ReviewResponse:
             row = cur.fetchone()
         conn.commit()
 
+    notification_message = f"Новый отзыв на товар {data.product_id}: {data.comment}"
+    send_notification_to_fastapi(data.user_id, notification_message)
+
     return ReviewResponse(
         id=row['id'],
         product_id=row['product_id'],
@@ -61,7 +86,6 @@ def create_review(data: ReviewCreate) -> ReviewResponse:
 def get_reviews(product_id: int = None, status: str = None) -> list:
     """
     Получить список отзывов.
-    Если status не указан — возвращаем все отзывы.
     """
     with get_db() as conn:
         with conn.cursor() as cur:

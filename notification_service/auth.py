@@ -1,15 +1,20 @@
 """JWT авторизация"""
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from jose import JWTError, jwt
+
 import bcrypt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import JWTError, jwt
 
 # Конфигурация JWT
-SECRET_KEY = "your-secret-key-change-in-production"
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+# Внутренний токен для сервисов
+SERVICE_TOKEN = os.getenv("SERVICE_TOKEN", "internal-service-token")
 
 # Схема безопасности
 security = HTTPBearer()
@@ -66,3 +71,14 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
             detail="Неверный токен"
         )
     return {"user_id": user_id, "username": username}
+
+
+async def verify_service_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Проверить сервис-токен для внутренних вызовов"""
+    token = credentials.credentials
+    if token != SERVICE_TOKEN:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Неверный сервис-токен"
+        )
+    return {"service": "ugc_service"}
