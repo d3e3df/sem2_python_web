@@ -74,17 +74,18 @@ def test_get_reviews(client):
 
 def test_update_review_status(client):
     """Тест: обновление статуса отзыва"""
-    create_resp = client.post('/ugc/reviews/', json={
-        'product_id': 1,
-        'user_id': 'admin',
-        'rating': 5,
-        'comment': 'comment'
-    })
+    client.post(
+        "/ugc/reviews/",
+        json={"product_id": 1, "user_id": "admin", "rating": 5, "comment": "comment"},
+    )
+    list_resp = client.get("/ugc/reviews/?product_id=1")
+    reviews = list_resp.get_json()
+    review_id = reviews[-1]["id"]
+    response = client.patch(
+        f"/ugc/reviews/{review_id}/status",
+        json={"status": "active"}
+    )
 
-    review_id = create_resp.get_json()['id']
-
-    response = client.patch(f'/ugc/reviews/{review_id}/status', json={'status': 'active'})
     assert response.status_code == 200
-
     data = response.get_json()
-    assert data['status'] == 'active'
+    assert data["status"] == "active"
