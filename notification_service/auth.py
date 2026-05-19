@@ -1,11 +1,12 @@
 """JWT авторизация"""
+
 import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import bcrypt
-from fastapi import HTTPException, status, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 
 # Конфигурация JWT
@@ -22,7 +23,9 @@ security = HTTPBearer()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Проверить пароль"""
-    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+    )
 
 
 def get_password_hash(password: str) -> str:
@@ -30,8 +33,8 @@ def get_password_hash(password: str) -> str:
     if len(password) > 72:
         password = password[:72]
     salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -40,7 +43,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(
+            minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        )
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -59,7 +64,9 @@ def decode_token(token: str) -> dict:
         )
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
     """Получить текущего пользователя из токена"""
     token = credentials.credentials
     payload = decode_token(token)
@@ -67,18 +74,18 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     username = payload.get("username")
     if user_id is None:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверный токен"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный токен"
         )
     return {"user_id": user_id, "username": username}
 
 
-async def verify_service_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+async def verify_service_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+):
     """Проверить сервис-токен для внутренних вызовов"""
     token = credentials.credentials
     if token != SERVICE_TOKEN:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Неверный сервис-токен"
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Неверный сервис-токен"
         )
     return {"service": "ugc_service"}

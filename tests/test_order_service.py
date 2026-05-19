@@ -1,14 +1,18 @@
 """Unit-тесты для order_service"""
-import sys
-import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from django.test import TestCase
-from shop.domain.models import Category, Product, Cart, Order, OrderItem
+
+from shop.domain.exceptions import (CartEmptyError, NotEnoughStockError,
+                                    OrderNotFoundError)
+from shop.domain.models import Cart, Category, Order, OrderItem, Product
 from shop.services.cart_service import add_to_cart, get_cart
-from shop.services.order_service import create_order, get_orders, get_order_by_id
-from shop.domain.exceptions import CartEmptyError, NotEnoughStockError, OrderNotFoundError
+from shop.services.order_service import (create_order, get_order_by_id,
+                                         get_orders)
 
 
 class OrderServiceTest(TestCase):
@@ -16,16 +20,13 @@ class OrderServiceTest(TestCase):
 
     def setUp(self):
         """Подготовка данных перед каждым тестом"""
-        self.category = Category.objects.create(
-            name="Электроника",
-            slug="electronics"
-        )
+        self.category = Category.objects.create(name="Электроника", slug="electronics")
         self.product = Product.objects.create(
             name="Ноутбук",
             description="Мощный ноутбук",
             price=50000,
             category=self.category,
-            stock=10
+            stock=10,
         )
         self.session_key = "test_session_123"
 

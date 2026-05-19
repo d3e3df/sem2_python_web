@@ -1,21 +1,21 @@
 """FastAPI сервис для уведомлений, авторизации и отчётов"""
-from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks
-from fastapi.security import HTTPBearer
-from contextlib import asynccontextmanager
-import logging
-from datetime import datetime
-import asyncpg
+
 import asyncio
+import logging
+from contextlib import asynccontextmanager
+from datetime import datetime
+from typing import Optional
 
-from .auth import (
-    create_access_token, get_password_hash, verify_password,
-    get_current_user, decode_token, verify_service_token
-)
+import asyncpg
+import httpx
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
+from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer
 
-from .schemas import (
-    UserRegister, UserLogin, TokenResponse, UserResponse,
-    NotificationRequest, NotificationResponse
-)
+from .auth import (create_access_token, decode_token, get_current_user,
+                   get_password_hash, verify_password, verify_service_token)
+from .schemas import (NotificationRequest, NotificationResponse, TokenResponse,
+                      UserLogin, UserRegister, UserResponse)
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 # Схема безопасности для JWT
 security = HTTPBearer()
 
-db_pool = None
+db_pool: Optional[asyncpg.Pool] = None
 
 
 @asynccontextmanager
@@ -41,11 +41,11 @@ async def lifespan(app: FastAPI):
         password="python",
         database="shop_db",
         min_size=1,
-        max_size=10
+        max_size=10,
     )
 
     async with db_pool.acquire() as conn:
-        await conn.execute('''
+        await conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id SERIAL PRIMARY KEY,
                 username VARCHAR(50) UNIQUE NOT NULL,
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
                 password_hash VARCHAR(255) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
-        ''')
+        """)
         logger.info("Таблица users готова")
 
     yield
@@ -67,7 +67,7 @@ app = FastAPI(
     title="Notification & Auth Service",
     description="Сервис для авторизации (JWT), уведомлений и отчётов",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 
@@ -81,21 +81,19 @@ async def health_check():
 # Auth эндпоинты
 @app.post("/auth/register", response_model=UserResponse)
 async def register(user_data: UserRegister):
-    """
-    Регистрация нового пользователя.
-    Возвращает данные пользователя.
-    """
+    """Регистрация нового пользователя."""
     global db_pool
 
     async with db_pool.acquire() as conn:
         existing = await conn.fetchrow(
             "SELECT id FROM users WHERE username = $1 OR email = $2",
-            user_data.username, user_data.email
+            user_data.username,
+            user_data.email,
         )
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Пользователь с таким именем или email уже существует"
+                detail="Пользователь с таким именем или email уже существует",
             )
 
         password_hash = get_password_hash(user_data.password)
@@ -105,39 +103,36 @@ async def register(user_data: UserRegister):
             VALUES ($1, $2, $3)
             RETURNING id
             """,
-            user_data.username, user_data.email, password_hash
+            user_data.username,
+            user_data.email,
+            password_hash,
         )
 
-    logger.info(f"Зарегистрирован новый пользователь: {user_data.username} (id={user_id})")
-
-    return UserResponse(
-        id=user_id,
-        username=user_data.username,
-        email=user_data.email
+    logger.info(
+        f"Зарегистрирован новый пользователь: {user_data.username} (id={user_id})"
     )
+
+    return UserResponse(id=user_id, username=user_data.username, email=user_data.email)
 
 
 @app.post("/auth/login", response_model=TokenResponse)
 async def login(user_data: UserLogin):
-    """
-    Логин пользователя.
-    Возвращает JWT токен.
-    """
+    """Логин пользователя. Возвращает JWT токен."""
     global db_pool
 
     async with db_pool.acquire() as conn:
         user = await conn.fetchrow(
             "SELECT id, username, password_hash FROM users WHERE username = $1",
-            user_data.username
+            user_data.username,
         )
-        if not user or not verify_password(user_data.password, user['password_hash']):
+        if not user or not verify_password(user_data.password, user["password_hash"]):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Неверное имя пользователя или пароль"
+                detail="Неверное имя пользователя или пароль",
             )
 
-        user_id = user['id']
-        username = user['username']
+        user_id = user["id"]
+        username = user["username"]
 
     access_token = create_access_token(data={"sub": str(user_id), "username": username})
     logger.info(f"Пользователь {username} (id={user_id}) вошёл в систему")
@@ -147,101 +142,90 @@ async def login(user_data: UserLogin):
 
 @app.get("/auth/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
-    """
-    Получить информацию о текущем пользователе.
-    Требует JWT токен в заголовке Authorization: Bearer <token>
-    """
+    """Получить информацию о текущем пользователе."""
     global db_pool
 
-    user_id = int(current_user['user_id'])
+    user_id = int(current_user["user_id"])
 
     async with db_pool.acquire() as conn:
         user = await conn.fetchrow(
-            "SELECT id, username, email, created_at FROM users WHERE id = $1",
-            user_id
+            "SELECT id, username, email, created_at FROM users WHERE id = $1", user_id
         )
         if not user:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Пользователь не найден"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
             )
 
     return {
-        "id": user['id'],
-        "username": user['username'],
-        "email": user['email'],
-        "created_at": str(user['created_at'])
+        "id": user["id"],
+        "username": user["username"],
+        "email": user["email"],
+        "created_at": str(user["created_at"]),
     }
 
 
 async def send_notification_email(user_id: str, message: str):
-    """
-    Фоновая задача: отправка уведомления.
-    """
+    """Фоновая задача: отправка уведомления."""
     logger.info(f"[Фоновая задача] Отправка уведомления пользователю {user_id}")
     logger.info(f"Сообщение: {message}")
-
-    # Имитируем отправку email
     await asyncio.sleep(2)
-
     logger.info(f"[Фоновая задача] Уведомление для {user_id} успешно отправлено")
 
 
 @app.post("/notify", response_model=NotificationResponse)
 async def send_notification(
-        request: NotificationRequest,
-        background_tasks: BackgroundTasks,
-        _: dict = Depends(verify_service_token)  # ← изменил
+    request: NotificationRequest,
+    background_tasks: BackgroundTasks,
+    _: dict = Depends(verify_service_token),
 ):
-    """
-    Отправить уведомление пользователю.
-    Доступно только для внутренних сервисов.
-    """
-    background_tasks.add_task(
-        send_notification_email,
-        request.user_id,
-        request.message
-    )
-
+    """Отправить уведомление. Доступно только для внутренних сервисов."""
+    background_tasks.add_task(send_notification_email, request.user_id, request.message)
     logger.info(f"Запрос на уведомление для {request.user_id}")
-
     return NotificationResponse(
         task_id=f"notify_{request.user_id}_{datetime.now().timestamp()}",
-        status="accepted"
+        status="accepted",
     )
 
 
+# Асинхронный эндпоинт для отчётов
 @app.get("/reports/orders")
 async def get_orders_report(
-        current_user: dict = Depends(get_current_user),
-        days: int = 7
+    current_user: dict = Depends(get_current_user), days: int = 7
 ):
-    """
-    Асинхронный отчёт по заказам за последние N дней.
-    Требует JWT токен.
-    """
-    logger.info(f"📊 Пользователь {current_user['username']} запросил отчёт за {days} дней")
+    """Асинхронный отчёт по заказам за последние N дней."""
+    logger.info(
+        f"Пользователь {current_user['username']} запросил отчёт за {days} дней"
+    )
 
-    # TODO: запрос к Django API или к БД
-    return {
-        "success": True,
-        "user": current_user['username'],
-        "period_days": days,
-        "report": {
-            "total_orders": 42,
-            "total_revenue": 250000,
-            "average_order_value": 5952,
-            "generated_at": datetime.now().isoformat()
-        }
-    }
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                f"http://localhost:8000/api/orders/report/?days={days}", timeout=10.0
+            )
+            if response.status_code == 200:
+                django_data = response.json()
+                return {
+                    "success": True,
+                    "user": current_user["username"],
+                    "report": {
+                        "period_days": days,
+                        "generated_at": datetime.now().isoformat(),
+                        "statistics": django_data,
+                    },
+                }
+        except Exception as e:
+            logger.error(f"Ошибка: {e}")
+
+    raise HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Сервис заказов недоступен",
+    )
 
 
+# Интеграция: проверка токена для других сервисов
 @app.post("/auth/verify")
 async def verify_token(token_data: dict):
-    """
-    Эндпоинт для проверки JWT токена другими сервисами (Django, Flask).
-    Принимает {"token": "..."}
-    """
+    """Эндпоинт для проверки JWT токена другими сервисами."""
     token = token_data.get("token")
     if not token:
         raise HTTPException(status_code=400, detail="Token required")
@@ -251,7 +235,7 @@ async def verify_token(token_data: dict):
         return {
             "valid": True,
             "user_id": payload.get("sub"),
-            "username": payload.get("username")
+            "username": payload.get("username"),
         }
     except HTTPException:
         return {"valid": False}
@@ -259,13 +243,15 @@ async def verify_token(token_data: dict):
 
 # Обработка ошибок
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc):
-    """Единый формат ошибок"""
-    return {
-        "success": False,
-        "error": {
-            "code": "HTTP_ERROR",
-            "message": exc.detail,
-            "status_code": exc.status_code
-        }
-    }
+async def http_exception_handler(_request, exc):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "success": False,
+            "error": {
+                "code": "HTTP_ERROR",
+                "message": exc.detail,
+                "status_code": exc.status_code,
+            },
+        },
+    )

@@ -1,8 +1,11 @@
 """Unit-тесты для product_service"""
+
 from django.test import TestCase
-from shop.domain.models import Category, Product
-from shop.services.product_service import get_product, get_products, check_stock
+
 from shop.domain.exceptions import ProductNotFoundError
+from shop.domain.models import Category, Product
+from shop.services.product_service import (check_stock, get_product,
+                                           get_products)
 
 
 class ProductServiceTest(TestCase):
@@ -10,16 +13,13 @@ class ProductServiceTest(TestCase):
 
     def setUp(self):
         """Подготовка данных перед каждым тестом"""
-        self.category = Category.objects.create(
-            name="Электроника",
-            slug="electronics"
-        )
+        self.category = Category.objects.create(name="Электроника", slug="electronics")
         self.product = Product.objects.create(
             name="Ноутбук",
             description="Мощный ноутбук",
             price=50000,
             category=self.category,
-            stock=10
+            stock=10,
         )
 
     def test_get_product_success(self):
@@ -47,7 +47,7 @@ class ProductServiceTest(TestCase):
             description="Книга",
             price=2000,
             category=category2,
-            stock=5
+            stock=5,
         )
 
         # Фильтруем по первой категории
