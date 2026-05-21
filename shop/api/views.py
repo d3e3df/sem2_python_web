@@ -24,9 +24,9 @@ def error_response(message, code="ERROR", status_code=status.HTTP_400_BAD_REQUES
             "error": {
                 "code": code,
                 "message": message,
-            }
+            },
         },
-        status=status_code
+        status=status_code,
     )
 
 
@@ -54,7 +54,9 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             serializer = self.get_serializer(product)
             return Response(serializer.data)
         except ProductNotFoundError as e:
-            return error_response(str(e), "PRODUCT_NOT_FOUND", status.HTTP_404_NOT_FOUND)
+            return error_response(
+                str(e), "PRODUCT_NOT_FOUND", status.HTTP_404_NOT_FOUND
+            )
 
 
 class CartViewSet(viewsets.GenericViewSet):
@@ -67,7 +69,9 @@ class CartViewSet(viewsets.GenericViewSet):
         """POST /api/cart/ — добавить товар в корзину"""
         serializer = AddToCartSerializer(data=request.data)
         if not serializer.is_valid():
-            return error_response(serializer.errors, "VALIDATION_ERROR", status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                serializer.errors, "VALIDATION_ERROR", status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             cart_item = add_to_cart(
@@ -79,15 +83,23 @@ class CartViewSet(viewsets.GenericViewSet):
                 CartSerializer(cart_item).data, status=status.HTTP_201_CREATED
             )
         except ProductNotFoundError as e:
-            return error_response(str(e), "PRODUCT_NOT_FOUND", status.HTTP_404_NOT_FOUND)
+            return error_response(
+                str(e), "PRODUCT_NOT_FOUND", status.HTTP_404_NOT_FOUND
+            )
         except NotEnoughStockError as e:
-            return error_response(str(e), "NOT_ENOUGH_STOCK", status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                str(e), "NOT_ENOUGH_STOCK", status.HTTP_400_BAD_REQUEST
+            )
 
     def list(self, request):
         """GET /api/cart/?session_key=xxx — получить корзину"""
         session_key = request.query_params.get("session_key")
         if not session_key:
-            return error_response("session_key обязателен", "MISSING_SESSION_KEY", status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                "session_key обязателен",
+                "MISSING_SESSION_KEY",
+                status.HTTP_400_BAD_REQUEST,
+            )
 
         cart_items = get_cart(session_key)
         serializer = CartSerializer(cart_items, many=True)
@@ -98,7 +110,11 @@ class CartViewSet(viewsets.GenericViewSet):
         """DELETE /api/cart/clear/?session_key=xxx — очистить корзину"""
         session_key = request.query_params.get("session_key")
         if not session_key:
-            return error_response("session_key обязателен", "MISSING_SESSION_KEY", status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                "session_key обязателен",
+                "MISSING_SESSION_KEY",
+                status.HTTP_400_BAD_REQUEST,
+            )
 
         clear_cart(session_key)
         return Response({"message": "Корзина очищена"}, status=status.HTTP_200_OK)
@@ -114,7 +130,9 @@ class OrderViewSet(viewsets.GenericViewSet):
         """POST /api/orders/ — создать заказ из корзины"""
         serializer = CreateOrderSerializer(data=request.data)
         if not serializer.is_valid():
-            return error_response(serializer.errors, "VALIDATION_ERROR", status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                serializer.errors, "VALIDATION_ERROR", status.HTTP_400_BAD_REQUEST
+            )
 
         try:
             order = create_order(
@@ -125,13 +143,19 @@ class OrderViewSet(viewsets.GenericViewSet):
         except CartEmptyError as e:
             return error_response(str(e), "CART_EMPTY", status.HTTP_400_BAD_REQUEST)
         except NotEnoughStockError as e:
-            return error_response(str(e), "NOT_ENOUGH_STOCK", status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                str(e), "NOT_ENOUGH_STOCK", status.HTTP_400_BAD_REQUEST
+            )
 
     def list(self, request):
         """GET /api/orders/?session_key=xxx — получить заказы пользователя"""
         session_key = request.query_params.get("session_key")
         if not session_key:
-            return error_response("session_key обязателен", "MISSING_SESSION_KEY", status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                "session_key обязателен",
+                "MISSING_SESSION_KEY",
+                status.HTTP_400_BAD_REQUEST,
+            )
 
         orders = get_orders(session_key)
         serializer = OrderSerializer(orders, many=True)
@@ -141,7 +165,11 @@ class OrderViewSet(viewsets.GenericViewSet):
         """GET /api/orders/{id}/ — получить детали заказа"""
         session_key = request.query_params.get("session_key")
         if not session_key:
-            return error_response("session_key обязателен", "MISSING_SESSION_KEY", status.HTTP_400_BAD_REQUEST)
+            return error_response(
+                "session_key обязателен",
+                "MISSING_SESSION_KEY",
+                status.HTTP_400_BAD_REQUEST,
+            )
 
         try:
             order = get_order_by_id(pk, session_key)
@@ -150,4 +178,6 @@ class OrderViewSet(viewsets.GenericViewSet):
         except OrderNotFoundError as e:
             return error_response(str(e), "ORDER_NOT_FOUND", status.HTTP_404_NOT_FOUND)
         except PermissionError as e:
-            return error_response(str(e), "PERMISSION_DENIED", status.HTTP_403_FORBIDDEN)
+            return error_response(
+                str(e), "PERMISSION_DENIED", status.HTTP_403_FORBIDDEN
+            )

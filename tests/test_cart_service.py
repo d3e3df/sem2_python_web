@@ -1,8 +1,10 @@
 """Тесты для cart_service"""
+
 from django.test import TestCase
-from shop.domain.models import Category, Product, Cart
-from shop.services.cart_service import add_to_cart, get_cart, clear_cart
-from shop.domain.exceptions import ProductNotFoundError, NotEnoughStockError
+
+from shop.domain.exceptions import NotEnoughStockError, ProductNotFoundError
+from shop.domain.models import Cart, Category, Product
+from shop.services.cart_service import add_to_cart, clear_cart, get_cart
 
 
 class CartServiceTest(TestCase):
@@ -10,16 +12,13 @@ class CartServiceTest(TestCase):
 
     def setUp(self):
         """Подготовка данных перед каждым тестом"""
-        self.category = Category.objects.create(
-            name="Электроника",
-            slug="electronics"
-        )
+        self.category = Category.objects.create(name="Электроника", slug="electronics")
         self.product = Product.objects.create(
             name="Ноутбук",
             description="Мощный ноутбук",
             price=50000,
             category=self.category,
-            stock=10
+            stock=10,
         )
         self.session_key = "test_session_123"
 

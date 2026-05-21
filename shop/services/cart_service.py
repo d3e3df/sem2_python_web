@@ -1,6 +1,7 @@
 """Сервис для работы с корзиной"""
 
 from django.db import transaction
+
 from shop.domain.exceptions import NotEnoughStockError, ProductNotFoundError
 from shop.domain.models import Cart, Product
 
