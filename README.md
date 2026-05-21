@@ -1,46 +1,48 @@
-# Спринт 3
+# Спринт 4 — FastAPI сервис
 
 ## Цель спринта
-Реализовать подсистему пользовательского контента (UGC) на Flask с интеграцией с основным Django API.
+
+Добавить современный FastAPI сервис с асинхронностью, JWT авторизацией, фоновыми задачами и интеграцией с существующими Django и Flask сервисами.
+
+---
 
 ## Что сделано
 
-### Django (основной сервис)
-- Товары, категории, корзина, заказы
-- Админка для управления
-- REST API с пагинацией и фильтрацией
+### FastAPI сервис (порт 8001)
 
-### Flask (UGC-сервис)
-- Отзывы на товары (create, list, update status)
-- Валидация через Pydantic V2
-- Интеграция с Django: проверка существования товара
-- Статусы отзывов: `pending` / `active` / `hidden`
-- Единый формат ошибок
+- **JWT авторизация**: регистрация, логин, защищённые эндпоинты
+- **PostgreSQL**: хранение пользователей (таблица `users`)
+- **Асинхронные эндпоинты**: `async/await` для всех операций
+- **Фоновые задачи**: отправка уведомлений через `BackgroundTasks`
+- **Отчёты**: реальные данные из Django API
+- **OpenAPI документация**: автоматическая на `/docs`
 
-## Структура проекта
+### Интеграция
+
+- **Flask -> FastAPI**: при создании отзыва отправляется уведомление (с сервис-токеном)
+- **FastAPI -> Django**: отчёт по заказам получает реальные данные из Django API
+- **Единый формат ошибок**: все сервисы возвращают `{"success": false, "error": {...}}`
+
+---
+
+## Структура
 
 ```
-sem2_python_web/
-├── config/                 # Django settings
-├── shop/                   # Django: товары, корзина, заказы
-├── ugc_service/            # Flask: отзывы
-│   ├── app.py
-│   ├── models.py
-│   ├── schemas.py
-│   └── services.py
-├── tests/                  # Unit-тесты
-├── manage.py
-└── README.md
+notification_service/
+├── __init__.py
+├── main.py           # FastAPI приложение
+├── auth.py           # JWT, хеширование паролей
+└── schemas.py        # Pydantic схемы
 ```
 
 ---
 
-## Запуск проекта
+## Запуск
 
 ### 1. Запустить Django (порт 8000)
 
 ```bash
-cd src
+cd ~/PycharmProjects/sem2_python_web/src
 python manage.py runserver
 ```
 
@@ -49,54 +51,72 @@ python manage.py runserver
 ```bash
 cd ~/PycharmProjects/sem2_python_web
 export FLASK_APP=ugc_service.app
-export FLASK_ENV=development
 flask run --port=5001
+```
+
+### 3. Запустить FastAPI (порт 8001)
+
+```bash
+cd ~/PycharmProjects/sem2_python_web
+uvicorn notification_service.main:app --reload --port 8001
 ```
 
 ---
 
-## API эндпоинты
+## API Эндпоинты
 
-### Django (основной API)
-
-| Метод | Эндпоинт | Описание |
-|-------|----------|----------|
-| GET | `/api/products/` | Список товаров |
-| GET | `/api/products/{id}/` | Детали товара |
-| POST | `/api/cart/` | Добавить в корзину |
-| POST | `/api/orders/` | Оформить заказ |
-
-### Flask (UGC-сервис)
-
-| Метод | Эндпоинт | Описание |
-|-------|----------|----------|
-| POST | `/ugc/reviews/` | Создать отзыв |
-| GET | `/ugc/reviews/?product_id=1` | Отзывы по товару |
-| GET | `/ugc/reviews/?status=active` | Отзывы по статусу |
-| PATCH | `/ugc/reviews/{id}/status` | Изменить статус (admin) |
+| Метод | Эндпоинт | Описание | Авторизация    |
+|-------|----------|----------|----------------|
+| GET | `/health` | Проверка здоровья | -              |
+| POST | `/auth/register` | Регистрация | -              |
+| POST | `/auth/login` | Логин → JWT токен | -              |
+| GET | `/auth/me` | Информация о пользователе | + JWT          |
+| POST | `/notify` | Отправка уведомления (фоновая задача) | + Сервис-токен |
+| GET | `/reports/orders` | Отчёт по заказам | + JWT          |
+| POST | `/auth/verify` | Проверка JWT токена | -              |
 
 ---
 
 ## Примеры запросов
 
-### Создать отзыв
+### 1. Регистрация
 
 ```bash
-curl -X POST http://127.0.0.1:5001/ugc/reviews/ \
+curl -X POST http://127.0.0.1:8001/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"product_id": 1, "user_id": "user", "rating": 5, "comment": "Класс"}'
+  -d '{"username": "user", "email": "example.mail.ru", "password": "qwerty"}'
 ```
 
-### Получить отзывы по товару
+### 2. Логин
 
 ```bash
-curl "http://127.0.0.1:5001/ugc/reviews/?product_id=1" | jq .
+curl -X POST http://127.0.0.1:8001/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "user", "password": "qwerty"}'
 ```
 
-### Изменить статус (администратор)
+Ответ: `{"access_token": "...", "token_type": "bearer"}`
+
+### 3. Защищённый эндпоинт
 
 ```bash
-curl -X PATCH http://127.0.0.1:5001/ugc/reviews/1/status \
+TOKEN="..."
+curl -X GET http://127.0.0.1:8001/auth/me \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 4. Отчёт по заказам
+
+```bash
+curl -X GET "http://127.0.0.1:8001/reports/orders?days=7" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 5. Уведомление (сервис-токен)
+
+```bash
+curl -X POST http://127.0.0.1:8001/notify \
   -H "Content-Type: application/json" \
-  -d '{"status": "active"}'
+  -H "Authorization: Bearer internal-service-token" \
+  -d '{"user_id": "user", "message": "Тест"}'
 ```
